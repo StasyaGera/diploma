@@ -9,6 +9,39 @@ struct image {
         parse(filename);
     }
     
+	image(image&& other) :
+		full_data_size(other.full_data_size),
+		data_size(other.data_size),
+		height(other.height),
+		width(other.width),
+		colors(other.colors),
+		bytes_per_pixel(other.bytes_per_pixel),
+		bytes_per_row(other.bytes_per_row)
+	{
+		full_data = other.full_data;
+		data = other.data;
+		other.full_data = nullptr;
+		other.data = nullptr;
+	}
+	
+	image& operator=(image&& other) 
+	{
+		full_data_size = other.full_data_size;
+		data_size = other.data_size;
+		height = other.height;
+		width = other.width;
+		colors = other.colors;
+		bytes_per_pixel = other.bytes_per_pixel;
+		bytes_per_row = other.bytes_per_row;
+
+		full_data = other.full_data;
+		data = other.data;
+		other.full_data = nullptr;
+		other.data = nullptr;
+
+		return *this;
+	}
+
     image(const image & other) :
         full_data_size(other.full_data_size),
         data_size(other.data_size),
@@ -36,9 +69,52 @@ struct image {
         fclose(output);
     }
 
+	image to_grey() {
+		image res(*this);
+		for (int x = 0; x < res.width; x++) {
+			for (int y = 0; y < res.height; y++) {
+				double br = 0.299 * (double)res(x, y, 2) + 0.587 * (double)res(x, y, 1) + 0.114 * (double)res(x, y, 0);
+				unsigned char brightness;
+				if ((unsigned char)br > 255) {
+					brightness = 255;
+				}
+				else {
+					brightness = (unsigned char)br;
+				}
+				res.set(x, y, 0, brightness);
+				res.set(x, y, 1, brightness);
+				res.set(x, y, 2, brightness);
+			}
+		}
+		res.colors = 1;
+		return res;
+	}
+
     unsigned char operator()(size_t x, size_t y, int col) const {
         return data[y * bytes_per_row + x * bytes_per_pixel + col];
     }
+
+	unsigned char w(int x, int y, int col) const { 
+		return (*this)(x - 1, y, col); 
+	}
+	unsigned char n(int x, int y, int col) const {
+		return (*this)(x, y - 1, col); 
+	}
+	unsigned char ww(int x, int y, int col) const {
+		return (*this)(x - 2, y, col); 
+	}
+	unsigned char nw(int x, int y, int col) const {
+		return (*this)(x - 1, y - 1, col); 
+	}
+	unsigned char nn(int x, int y, int col) const {
+		return (*this)(x, y - 2, col); 
+	}
+	unsigned char ne(int x, int y, int col) const {
+		return (*this)(x + 1, y - 1, col); 
+	}
+	unsigned char nne(int x, int y, int col) const {
+		return (*this)(x + 1, y - 2, col); 
+	}
 
     void set(size_t x, size_t y, int col, unsigned char val) {
         data[y * bytes_per_row + x * bytes_per_pixel + col] = val;

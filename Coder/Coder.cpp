@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <filesystem>
 #include <vector>
+#include <numeric>
 
 #include "gnuplot_i.hpp"
 
@@ -9,36 +10,68 @@
 #include "image.h"
 #include "entropy.h"
 #include "prediction.h"
-#include "ga_settings.h"
+//#include "ga_settings.h"
+//#include "sayood_ga_settings.h"
+//#include "context_tuning_ga_settings.h"
+#include "my_ga.h"
 
 const char * sayood_dir = "sayood_imgs";
 const char * test_dir = "test_imgs";
 const char * test_grey_512 = "test_grey_512x512";
 const char * test_color_512 = "test_color_512x512";
+const char * test_filtered = "filtered-test";
 
-const int colors = 3;
+//const int colors = 3;
+const int colors = 1;
 
 void exec(const char * dir) {
-    print_header();
+	print_header({ "entropy", "prev", "jpeg_ls", "calic", "sayood" });
 
     for (auto& p : std::filesystem::directory_iterator(dir)) {
-        image img(p.path().string().c_str(), colors);
+        image img(p.path().string().c_str(), 1);
         
         double img_entropy = count_img_entropy(img);
         double prev_entropy = get_err_entropy(img, prev);
         double jpeg_ls_entropy = get_err_entropy(img, jpeg_ls);
-        //double calic_entropy = get_err_entropy(img, calic);
+        double calic_entropy = get_err_entropy(img, calic);
         
-		auto weights = generate_weights(img, p.path().filename().string(), img_entropy);
-        double genetic_entropy = get_err_entropy(img, bind_genetic(weights));
-        
-		//std::vector<std::vector<short>> jpeg_ls_emulation = std::vector<std::vector<short>>({ {15, 0, 0}, {1, 1, 1}, {0, 15, 0}, {0, 15, 0}, {1, 1, 1}, {15, 0, 0} });
-		//double jpeg_ls_emulated_entropy = get_err_entropy(img, genetic, jpeg_ls_emulation);
+		//std::vector<std::vector<short>> jpeg_ls_emulation = std::vector<std::vector<short>>({ {15, 0, 0}, {1, 1, -1}, {0, 15, 0}, {0, 15, 0}, {1, 1, -1}, {15, 0, 0} });
+		//double jpeg_ls_emulated_entropy = get_err_entropy(img, bind_genetic(jpeg_ls_emulation));
 
-        print_row(p.path().filename(), img_entropy, prev_entropy, jpeg_ls_entropy/*, calic_entropy*/, genetic_entropy);
+		//auto weights = generate_weights(img, p.path().filename().string(), img_entropy);
+        //double genetic_entropy = get_err_entropy(img, bind_genetic(weights));
+
+		//auto coeffs = generate_weights(img, p.path().filename().string(), img_entropy);
+        //double sayood_entropy = get_err_entropy<std::vector<std::vector<int>>>(img, sayood, coeffs);
+        //double sayood_entropy = get_best(img, p.path().filename().string(), img_entropy);
+        
+		double sayood_entropy = gen_in_gen(img);
+        
+		//auto context = generate_weights(img, p.path().filename().string(), img_entropy);
+        //double context_calic_entropy = get_err_entropy<std::vector<short>>(img, calic, context);
+        
+		print_row(p.path().filename(), { img_entropy, prev_entropy, jpeg_ls_entropy, calic_entropy, sayood_entropy });
     }
 
     print_bottom_line();
+}
+
+void filter_images(const char* dir, short delta) {
+	for (auto& p : std::filesystem::directory_iterator(dir)) {
+		image img(p.path().string().c_str(), colors);
+		image res(img);
+		for (size_t x = 0; x < img.width; x++) {
+			for (size_t y = 0; y < img.height; y++) {
+				for (int col = 0; col < img.colors; col++) {
+					short new_val = img(x, y, col) + delta;
+					if (new_val < 0) new_val = 0;
+					if (new_val > 255) new_val = 255;
+					res.set(x, y, col, (unsigned char)new_val);
+				}
+			}
+		}
+		res.write_to_file((std::string(test_filtered) + "/" + p.path().filename().string()).c_str());
+	}
 }
 
 void plot_frequency(const char * dir) {
@@ -71,21 +104,21 @@ void plot_frequency(const char * dir) {
 			Gnuplot plotter("lines");
 			plotter
 				.set_grid()
-				.set_title("Для изображения " + p.path().filename().string());
+				.set_title("For image " + p.path().filename().string());
 
 			plotter
-				.set_xlabel("Яркость пикселя")
-				.set_ylabel("Количество пикселей")
+				.set_xlabel("Brightness")
+				.set_ylabel("Pixels count")
 				.set_xrange(0, 255)
-				.savetofigure("graph/frequencies_" + p.path().filename().string() + ".png", "pngcairo size 640, 480 enhanced font 'Verdana,9'")
+				.savetofigure("graph/frequencies_en_" + p.path().filename().string() + ".png", "pngcairo size 640, 480 enhanced font 'Verdana,9'")
 				.plot_x(values);
 
 			plotter
 				.reset_plot()
-				.set_xlabel("Значение ошибки предсказания")
-				.set_ylabel("Количество пикселей")
+				.set_xlabel("Prediction error value")
+				.set_ylabel("Pixels count")
 				.set_xrange(-255, 255)
-				.savetofigure("graph/err_frequencies_" + p.path().filename().string() + ".png", "pngcairo size 640, 480 enhanced font 'Verdana,9'")
+				.savetofigure("graph/err_frequencies_en_" + p.path().filename().string() + ".png", "pngcairo size 640, 480 enhanced font 'Verdana,9'")
 				.plot_xy(brightness, err);
 		}
 		catch (GnuplotException ge) {
@@ -109,8 +142,8 @@ void plot_err_by_pop_sz(const char * dir, int max_population = def_population_sz
 		int population = 20;
         while (population < max_population) {
             population_sz.push_back(population);
-			auto weights = generate_weights(img, p.path().filename().string(), img_entropy, population);
-            err_entr.push_back(get_err_entropy(img, bind_genetic(weights)));
+			//auto weights = generate_weights(img, p.path().filename().string(), img_entropy, population);
+            //err_entr.push_back(get_err_entropy(img, bind_genetic(weights)));
 
 			if (population >= 1000) {
                 population += 500;
@@ -152,8 +185,8 @@ void plot_err_by_gen_no(const char* dir, int population = def_population_sz) {
 		double img_entropy = count_img_entropy(img);
 		double jpeg_entropy = get_err_entropy(img, jpeg_ls);
 
-		auto weights = generate_weights(img, p.path().filename().string(), img_entropy, population);
-		weights = generate_weights(img, p.path().filename().string(), img_entropy, population, false);
+		//auto weights = generate_weights(img, p.path().filename().string(), img_entropy, population);
+		//weights = generate_weights(img, p.path().filename().string(), img_entropy, population, false);
 
 		try {
 			Gnuplot plotter;
@@ -184,11 +217,44 @@ void plot_err_by_gen_no(const char* dir, int population = def_population_sz) {
 	}
 }
 
+void convert_to_grey(const char* dir, const char* res_dir) {
+	for (auto& p : std::filesystem::directory_iterator(dir)) {
+		image img(p.path().string().c_str(), colors);
+		image res = img.to_grey();
+		res.write_to_file((std::string(res_dir) + "\\" + p.path().filename().string()).c_str());
+	}
+}
 
 int main() {
-    //exec(test_grey_512);
-    //exec(test_color_512);
+	//plot_frequency("check");
+
+	//convert_to_grey("check", "check_grey");
+	//exec("check_grey");
+
+	//node west(w, img);
+	//node sm(add, { west, west });
+
+	//sm.eval().write_to_file("lena-test/out.bmp");
+
+	//for (auto& p : std::filesystem::directory_iterator("sensin-test")) {
+	//	image img(p.path().string().c_str(), colors);
+	//	double img_entropy = count_img_entropy(img);
+
+	//	for (int i = 0; i < 5; i++) {
+	//		auto coeffs = generate_weights(img, p.path().filename().string(), img_entropy);
+	//		std::cout << get_err_entropy<std::vector<std::vector<int>>>(img, sayood, coeffs) << '\n';
+	//	}
+	//}
+
+	//filter_images(test_grey_512, 80);
+	//filter_images(sayood_dir, 50);
+
+    exec(test_grey_512);
+    //exec(test_filtered);
+    exec(test_color_512);
     //exec(sayood_dir);
+    //exec("omaha-test");
+    //exec("sensin-test");
     //exec("med-test");
     //exec("lena-test");
     //exec("screenshot-test");

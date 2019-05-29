@@ -13,7 +13,7 @@
 #include "prediction.h"
 #include "default_constants.h"
 
-typedef std::vector<std::vector<short>> vvshort;
+typedef std::vector<std::vector<short>> chromosome_t;
 
 using namespace std::placeholders;
 
@@ -23,11 +23,11 @@ const int max_alpha_value = 15;
 const int bits_in_alpha = std::log2(max_alpha_value + 1);
 const int choices_num = 6;
 const int alphas_per_choice = 3;
-const vvshort jpeg_ls_emulation = vvshort({ {15, 0, 0}, {1, 1, -1}, {0, 15, 0}, {0, 15, 0}, {1, 1, -1}, {15, 0, 0} });
+const chromosome_t jpeg_ls_emulation = chromosome_t({ {15, 0, 0}, {1, 1, -1}, {0, 15, 0}, {0, 15, 0}, {1, 1, -1}, {15, 0, 0} });
 
 struct MyWeights
 {
-	vvshort alphas = vvshort(choices_num, std::vector<short>(alphas_per_choice, 0));
+	chromosome_t chromosome = chromosome_t(choices_num, std::vector<short>(alphas_per_choice, 0));
 
     std::string to_string() const
     {
@@ -36,7 +36,7 @@ struct MyWeights
 			for (int j = 0; j < alphas_per_choice; j++) {
 				result += 
 					(j == 0 ? "{" : " ") + 
-					std::to_string(alphas[i][j]) + 
+					std::to_string(chromosome[i][j]) + 
 					(j == alphas_per_choice - 1 ? "}" : ",");
 			}
 			result += (i == choices_num - 1 ? "}" : ", ");
@@ -55,15 +55,14 @@ typedef EA::GenerationType<MyWeights, MyMiddleCost> Generation_Type;
 
 void init_genes(MyWeights& p, const std::function<double(void)> &rnd01, bool init_jpeg = true)
 {
-    p.alphas = vvshort(6, std::vector<short>(3, 0));
 	double v = rnd01();
 	if (init_jpeg && v < 0.15 * elite_percentage) {
-		p.alphas = jpeg_ls_emulation;
+		p.chromosome = jpeg_ls_emulation;
 	}
 	else {
 		for (int i = 0; i < choices_num; i++) {
 			for (int j = 0; j < alphas_per_choice; j++) {
-				p.alphas[i][j] = std::floor(rnd01() * (double)(2 * max_alpha_value + 1)) - max_alpha_value;
+				p.chromosome[i][j] = std::floor(rnd01() * (double)(2 * max_alpha_value + 1)) - max_alpha_value;
 			}
 		}
 	}
@@ -75,7 +74,7 @@ bool eval_solution(
     const image& img,
     const double& max_entropy)
 {
-    c.entropy = get_err_entropy(img, bind_genetic(p.alphas));
+    c.entropy = get_err_entropy(img, bind_genetic(p.chromosome));
     return c.entropy < max_entropy;
 }
 
@@ -93,7 +92,7 @@ MyWeights mutate_by_bit_inversion(
     //int i = std::floor(rnd01() * choices_num);
     //int j = std::floor(rnd01() * alphas_per_choice);
     //int k = std::floor(rnd01() * bits_in_alpha);
-    X_new.alphas[i][j] ^= (1 << k);
+    X_new.chromosome[i][j] ^= (1 << k);
 
     return X_new;
 }
@@ -109,8 +108,8 @@ MyWeights mutate_by_random_increase(
     bool in_range;
     do {
         X_new = X_base;
-        X_new.alphas[i][j] += 0.2*(rnd01() - rnd01())*shrink_scale;
-        in_range = (X_new.alphas[i][j] >= (double)(-max_alpha_value) && X_new.alphas[i][j] <= (double)max_alpha_value);
+        X_new.chromosome[i][j] += 0.2*(rnd01() - rnd01())*shrink_scale;
+        in_range = (X_new.chromosome[i][j] >= (double)(-max_alpha_value) && X_new.chromosome[i][j] <= (double)max_alpha_value);
     } while (!in_range);
 
     return X_new;
@@ -123,8 +122,8 @@ MyWeights crossover_on_block(
 {
     MyWeights X_new;
     int r = std::floor(rnd01() * (double)choices_num);
-    std::copy(X1.alphas.begin(), X1.alphas.begin() + r, X_new.alphas.begin());
-    std::copy(X2.alphas.begin() + r, X2.alphas.end(), X_new.alphas.begin() + r);
+    std::copy(X1.chromosome.begin(), X1.chromosome.begin() + r, X_new.chromosome.begin());
+    std::copy(X2.chromosome.begin() + r, X2.chromosome.end(), X_new.chromosome.begin() + r);
 
     return X_new;
 }
@@ -139,10 +138,10 @@ MyWeights crossover_on_random(
     int b = r / alphas_per_choice;
     int a = r % alphas_per_choice;
 
-    std::copy(X1.alphas.begin(), X1.alphas.begin() + b, X_new.alphas.begin());
-    std::copy(X1.alphas[b].begin(), X1.alphas[b].begin() + a, X_new.alphas[b].begin());
-    std::copy(X2.alphas[b].begin() + a, X2.alphas[b].end(), X_new.alphas[b].begin() + a);
-    std::copy(X2.alphas.begin() + b + 1, X2.alphas.end(), X_new.alphas.begin() + b + 1);
+    std::copy(X1.chromosome.begin(), X1.chromosome.begin() + b, X_new.chromosome.begin());
+    std::copy(X1.chromosome[b].begin(), X1.chromosome[b].begin() + a, X_new.chromosome[b].begin());
+    std::copy(X2.chromosome[b].begin() + a, X2.chromosome[b].end(), X_new.chromosome[b].begin() + a);
+    std::copy(X2.chromosome.begin() + b + 1, X2.chromosome.end(), X_new.chromosome.begin() + b + 1);
 
     return X_new;
 }
@@ -166,7 +165,7 @@ double calculate_SO_total_fitness(const GA_Type::thisChromosomeType &X)
     return X.middle_costs.entropy;
 }
 
-vvshort generate_weights(const image& img, std::string img_name, double entropy, int population = def_population_sz, bool init_jpeg = true, int generation_max = def_generations) 
+chromosome_t generate_weights(const image& img, std::string img_name, double entropy, int population = def_population_sz, bool init_jpeg = true, int generation_max = def_generations) 
 {
     log_file.open(def_verbose_log_filename(img_name, population, init_jpeg));
     gbg_file.open(def_err_gen_by_gen_filename(img_name, population, init_jpeg));
@@ -187,7 +186,7 @@ vvshort generate_weights(const image& img, std::string img_name, double entropy,
     ga_obj.best_stall_max = 10; // max generations with no changes in best score
     ga_obj.elite_count = elite_percentage * population; 
     ga_obj.crossover_fraction = 0.7;
-    ga_obj.mutation_rate = 0.3;
+    ga_obj.mutation_rate = mutation_rate;
 
     ga_obj.calculate_SO_total_fitness = calculate_SO_total_fitness;
     ga_obj.init_genes = std::bind(init_genes, _1, _2, init_jpeg);
@@ -204,5 +203,5 @@ vvshort generate_weights(const image& img, std::string img_name, double entropy,
     log_file.close();
     gbg_file.close();
 	
-    return ga_obj.last_generation.chromosomes[ga_obj.last_generation.best_chromosome_index].genes.alphas;
+    return ga_obj.last_generation.chromosomes[ga_obj.last_generation.best_chromosome_index].genes.chromosome;
 }

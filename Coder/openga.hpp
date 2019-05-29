@@ -337,10 +337,11 @@ public:
 		get_shrink_scale(default_shrink_scale)
 	{
 		// initialize the random number generator with time-dependent seed
-		/*uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-		std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed>>32)};*/
-		
-		rng.seed(seed);
+		uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+		std::seed_seq ss{ uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed >> 32) };
+		rng.seed(ss);
+
+		//rng.seed(10);
 		std::uniform_real_distribution<double> unif(0, 1);
 		if(N_threads==0) // number of CPU cores not detected.
 			N_threads=8;
@@ -1457,7 +1458,7 @@ protected:
 				cout<<"Crossover of chromosomes "<<pidx_c1<<","<<pidx_c2<<endl;
 			GeneType Xp1=last_generation.chromosomes[pidx_c1].genes;
 			GeneType Xp2=last_generation.chromosomes[pidx_c2].genes;
-			X.genes=crossover(Xp1,Xp2,[this](){return random01();});
+			 X.genes=crossover(Xp1,Xp2,[this](){return random01();});
 			if(random01()<=mutation_rate)
 			{
 				if(verbose)
@@ -1494,7 +1495,7 @@ protected:
 			return ;
 
 		if(crossover_fraction<=0.0 || crossover_fraction>1.0)
-			throw runtime_error("Wrong crossover fractoin");
+			throw runtime_error("Wrong crossover fraction");
 		if(mutation_rate<0.0 || mutation_rate>1.0)
 			throw runtime_error("Wrong mutation rate");
 		if(generation_step<=0)

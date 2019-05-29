@@ -30,10 +30,10 @@ double count_err_entropy(const image & img, const image & predicted) {
     int freq[511];
     std::fill_n(freq, 511, 0);
 
-    for (size_t y = 0; y < img.height; y++) {
-        for (size_t x = 0; x < img.width; x++) {
+    for (size_t y = 2; y < img.height; y++) {
+        for (size_t x = 2; x < img.width - 1; x++) {
             for (int col = 0; col < img.colors; col++) {
-                freq[255 + (int)(img(x, y, col) - predicted(x, y, col))]++;
+                freq[255 + ((short)img(x, y, col) - (short)predicted(x, y, col))]++;
             }
         }
     }
