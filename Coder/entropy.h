@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 
 double count_img_entropy(const image & img) {
@@ -22,13 +23,13 @@ double count_img_entropy(const image & img) {
     return res;
 }
 
-double count_err_entropy(const image & img, const image & predicted) {
+double get_err_entropy(const image & img, std::function<unsigned char(const image&, size_t, size_t, int)> p) {
     int freq[511];
     std::fill_n(freq, 511, 0);
     for (size_t y = 0; y < img.height; y++) {
         for (size_t x = 0; x < img.width; x++) {
             for (int col = 0; col < img.colors; col++) {
-                freq[255 + ((int)img(x, y, col) - (int)predicted(x, y, col))]++;
+                freq[255 + ((int)img(x, y, col) - (int)p(img, x, y, col))]++;
             }
         }
     }

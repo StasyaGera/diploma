@@ -99,11 +99,10 @@ unsigned char int_to_pix(const image& img, int x, int y, int col, int val) {
 }
 
 int get_ctx_tree(const image& img, size_t x, size_t y, int col, const std::vector<int>& context) {
-	auto get_pix_val = std::bind(int_to_pix, img, x, y, col, _1);
 	int k = -1;
-	if (std::abs(get_pix_val(context[0]) - get_pix_val(context[1])) > context[2]) {
-		if (std::abs(get_pix_val(context[3]) - get_pix_val(context[4])) > context[5]) {
-			if (std::abs(get_pix_val(context[9]) - get_pix_val(context[10])) > context[11]) {
+	if (std::abs(int_to_pix(img, x, y, col, context[0]) - int_to_pix(img, x, y, col, context[1])) > context[2]) {
+		if (std::abs(int_to_pix(img, x, y, col, context[3]) - int_to_pix(img, x, y, col, context[4])) > context[5]) {
+			if (std::abs(int_to_pix(img, x, y, col, context[9]) - int_to_pix(img, x, y, col, context[10])) > context[11]) {
 				k = 0;
 			}
 			else {
@@ -111,7 +110,7 @@ int get_ctx_tree(const image& img, size_t x, size_t y, int col, const std::vecto
 			}
 		}
 		else {
-			if (std::abs(get_pix_val(context[12]) - get_pix_val(context[13])) > context[14]) {
+			if (std::abs(int_to_pix(img, x, y, col, context[12]) - int_to_pix(img, x, y, col, context[13])) > context[14]) {
 				k = 2;
 			}
 			else {
@@ -120,8 +119,8 @@ int get_ctx_tree(const image& img, size_t x, size_t y, int col, const std::vecto
 		}
 	}
 	else {
-		if (std::abs(get_pix_val(context[6]) - get_pix_val(context[7])) > context[8]) {
-			if (std::abs(get_pix_val(context[15]) - get_pix_val(context[16])) > context[17]) {
+		if (std::abs(int_to_pix(img, x, y, col, context[6]) - int_to_pix(img, x, y, col, context[7])) > context[8]) {
+			if (std::abs(int_to_pix(img, x, y, col, context[15]) - int_to_pix(img, x, y, col, context[16])) > context[17]) {
 				k = 4;
 			}
 			else {
@@ -129,7 +128,7 @@ int get_ctx_tree(const image& img, size_t x, size_t y, int col, const std::vecto
 			}
 		}
 		else {
-			if (std::abs(get_pix_val(context[18]) - get_pix_val(context[19])) > context[20]) {
+			if (std::abs(int_to_pix(img, x, y, col, context[18]) - int_to_pix(img, x, y, col, context[19])) > context[20]) {
 				k = 6;
 			}
 			else {
@@ -141,15 +140,14 @@ int get_ctx_tree(const image& img, size_t x, size_t y, int col, const std::vecto
 }
 
 int get_ctx_calic(const image& img, size_t x, size_t y, int col, const std::vector<int>& context = calic_contexts) {
-	auto get_pix_val = std::bind(int_to_pix, img, x, y, col, _1);
 	short dv =
-		std::abs(get_pix_val(context[0]) - get_pix_val(context[1])) +
-		std::abs(get_pix_val(context[2]) - get_pix_val(context[3])) +
-		std::abs(get_pix_val(context[4]) - get_pix_val(context[5]));
+		std::abs(int_to_pix(img, x, y, col, context[0]) - int_to_pix(img, x, y, col, context[1])) +
+		std::abs(int_to_pix(img, x, y, col, context[2]) - int_to_pix(img, x, y, col, context[3])) +
+		std::abs(int_to_pix(img, x, y, col, context[4]) - int_to_pix(img, x, y, col, context[5]));
 	short dh =
-		std::abs(get_pix_val(context[6]) - get_pix_val(context[7])) +
-		std::abs(get_pix_val(context[8]) - get_pix_val(context[9])) +
-		std::abs(get_pix_val(context[10]) - get_pix_val(context[11]));
+		std::abs(int_to_pix(img, x, y, col, context[6]) - int_to_pix(img, x, y, col, context[7])) +
+		std::abs(int_to_pix(img, x, y, col, context[8]) - int_to_pix(img, x, y, col, context[9])) +
+		std::abs(int_to_pix(img, x, y, col, context[10]) - int_to_pix(img, x, y, col, context[11]));
 	short D = dv - dh;
 
 	int k = -1;
@@ -207,16 +205,4 @@ unsigned char evolvable(const image& img, size_t x, size_t y, int col,
 		res2 += coeffs[k][3 * i] * coeffs[k][3 * i + 2];
 	}
 	return res2 == 0 ? 0 : res1 / res2;
-}
-
-double get_err_entropy(const image & img, std::function<unsigned char(const image &, size_t, size_t, int)> p) {
-    image res(img);
-	for (size_t y = 0; y < img.height; y++) {
-		for (size_t x = 0; x < img.width; x++) {
-			for (int col = 0; col < img.colors; col++) {
-				res.set(x, y, col, p(img, x, y, col));
-			}
-		}
-	}
-    return count_err_entropy(img, res);
 }
