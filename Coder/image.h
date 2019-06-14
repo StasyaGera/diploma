@@ -94,28 +94,6 @@ struct image {
         return data[y * bytes_per_row + x * bytes_per_pixel + col];
     }
 
-	unsigned char w(int x, int y, int col) const { 
-		return (*this)(x - 1, y, col); 
-	}
-	unsigned char n(int x, int y, int col) const {
-		return (*this)(x, y - 1, col); 
-	}
-	unsigned char ww(int x, int y, int col) const {
-		return (*this)(x - 2, y, col); 
-	}
-	unsigned char nw(int x, int y, int col) const {
-		return (*this)(x - 1, y - 1, col); 
-	}
-	unsigned char nn(int x, int y, int col) const {
-		return (*this)(x, y - 2, col); 
-	}
-	unsigned char ne(int x, int y, int col) const {
-		return (*this)(x + 1, y - 1, col); 
-	}
-	unsigned char nne(int x, int y, int col) const {
-		return (*this)(x + 1, y - 2, col); 
-	}
-
     void set(size_t x, size_t y, int col, unsigned char val) {
         data[y * bytes_per_row + x * bytes_per_pixel + col] = val;
     }

@@ -9,8 +9,8 @@ const int entropy_width = 10;
 const std::string sep = " |";
 
 size_t predictors_count;
-size_t total_width;// = img_name_width + entropy_width * predictors_count + sep.size() * (predictors_count + 1);
-std::string line;// = sep + std::string(total_width - 1, '-') + '|';
+size_t total_width;
+std::string line;
 
 void print_header(std::initializer_list<std::string> predictors) {
 	predictors_count = predictors.size();
